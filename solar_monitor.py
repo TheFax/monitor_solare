@@ -23,10 +23,10 @@ import time
 #import RPi.GPIO as GPIO   #https://github.com/LeMaker/RPi.GPIO_BP
 
 #Fonts
-fontButton = "-family {Cantarell} -size 24 -weight bold -slant roman -underline 0 -overstrike 0"
-fontDescrLabel  = "-family {Nimbus Sans L} -size 34 -slant roman -underline 0 -overstrike 0"
-fontLabel  = "-family {Nimbus Sans L} -size 34 -weight bold -slant roman -underline 0 -overstrike 0"
-fontBottomLabel  = "-family {Nimbus Sans L} -size 74 -weight bold -slant roman -underline 0 -overstrike 0"
+fontButton =       "-family {Cantarell}     -size 24 -weight bold -slant roman -underline 0 -overstrike 0"
+fontDescrLabel  =  "-family {Nimbus Sans L} -size 34              -slant roman -underline 0 -overstrike 0"
+fontLabel  =       "-family {Nimbus Sans L} -size 54 -weight bold -slant roman -underline 0 -overstrike 0"
+fontBottomLabel  = "-family {Nimbus Sans L} -size 28              -slant roman -underline 0 -overstrike 0"
 
 GPIO_CICALINA = 1
 GPIO_SIM_1_STATUS = 2
@@ -52,8 +52,8 @@ LOOP_ARMED_INIT = "Armed..."
 LOOP_ARMED = "Armed"
 LOOP_HOLE_INIT = "Hole..."
 LOOP_HOLE = "Hole!"
-LOOP_END_RUN_IN_INIT = "Run-in: ENDING"
-LOOP_END_RUN_IN = "Run-in: END"
+LOOP_END_RUN_IN_INIT = "Run-in ENDING"
+LOOP_END_RUN_IN = "Run-in END"
 
 LOOP_1_status = LOOP_STANDBY_INIT
 LOOP_2_status = LOOP_STANDBY_INIT
@@ -141,7 +141,7 @@ def main_logic(loop,actual_status,ta,simulator):
         if simulator == SIMULATOR_ON:
             actual_status = LOOP_ARMING_INIT
     elif actual_status == LOOP_ARMING_INIT:
-        countdown[loop] = 10    #Tempo autoarm
+        countdown[loop] = 300    #Tempo autoarm
         actual_status = LOOP_ARMING
     elif actual_status == LOOP_ARMING:
         if countdown[loop] == 0:
@@ -149,7 +149,7 @@ def main_logic(loop,actual_status,ta,simulator):
         if simulator == SIMULATOR_OFF or ta == CURRENT_ABSENT:
             actual_status = LOOP_STANDBY_INIT
     elif actual_status == LOOP_ARMED_INIT:
-        countdown[loop] = 10    #Tempo run-in
+        countdown[loop] = 5460    #Tempo run-in
         actual_status = LOOP_ARMED
     elif actual_status == LOOP_ARMED:
         if simulator == SIMULATOR_OFF:
@@ -160,6 +160,7 @@ def main_logic(loop,actual_status,ta,simulator):
             actual_status = LOOP_END_RUN_IN_INIT
     elif actual_status == LOOP_HOLE_INIT:
         countdown[loop] = 0
+        event_logger("Logic","Hole in loop " + str(loop))
         actual_status = LOOP_HOLE
     elif actual_status == LOOP_HOLE:
         if simulator == SIMULATOR_OFF:
@@ -173,18 +174,25 @@ def main_logic(loop,actual_status,ta,simulator):
         pass
     return actual_status
 
-def click_lblSim1(event=None):
-    pass
+def click_lblLogo(event=None):
+    event_logger("Event","exit via click_lblLogo")
+    root.destroy()
     
 def click_btnDisarm1():
+    event_logger("Event","Manual disarm loop 1")
     global LOOP_1_status
     LOOP_1_status = LOOP_STANDBY_INIT
 
 def click_btnDisarm2():
+    event_logger("Event","Manual disarm loop 2")
     global LOOP_2_status
     LOOP_2_status = LOOP_STANDBY_INIT
 
-
+def event_logger(group, description):
+    print "[",time.strftime('%H:%M:%S'),"] ", group, ":", description
+    text = "[" + time.strftime('%H:%M:%S') + "] " + group + " - " + description
+    lblBottom.configure(text=text)
+ 
 def update_debug_labels():
     global fast_counter
     time_now = time.strftime('%H:%M:%S')  #20:33:59
@@ -268,19 +276,12 @@ canvas.place(x=0, y=0, height=screen_height, width=screen_width)
 #La seguente riga di codice traccia una diagonale sullo schermo. Utile per vedere l'overscan.
 #canvas.create_line(0,0,screen_width,screen_height) 
 
-lblLogo = tk.Label(root)
-lblLogo.place(x=20, y=20, height=238, width=226)
-lblLogo.configure(background="#ffffff")
-root._img1 = tk.PhotoImage(file="./socomec_logo-ba-service_160x145.png")
-lblLogo.configure(image=root._img1)
-lblLogo.configure(text="")
-
-btnExit = tk.Button(root)
-btnExit.place(x=30, y=260, height=46, width=207)
-btnExit.configure(activebackground="#d9d9d9")
-btnExit.configure(command=root.destroy)
-btnExit.configure(font=fontButton)
-btnExit.configure(text='''Exit''')
+##btnExit = tk.Button(root)
+##btnExit.place(x=30, y=260, height=46, width=207)
+##btnExit.configure(activebackground="#d9d9d9")
+##btnExit.configure(command=root.destroy)
+##btnExit.configure(font=fontButton)
+##btnExit.configure(text='''Exit''')
 
 lblDescr1 = tk.Label(root)
 lblDescr1.place(x=300, y=40, height=60, width=791)
@@ -295,7 +296,6 @@ lblSim1.place(x=300, y=105, height=140, width=791)
 lblSim1.configure(background=GREEN)
 lblSim1.configure(font=fontLabel)
 lblSim1.configure(text='''loading''')
-lblSim1.bind("<Button-1>",click_lblSim1)
 btnDisarm1 = tk.Button(root)
 btnDisarm1.place(x=800, y=40, height=60, width=291)
 btnDisarm1.configure(activebackground="#d9d9d9")
@@ -343,10 +343,19 @@ lblClock = tk.Label(root, font=("Helvetica", 36))
 lblClock = tk.Label(text='Waiting function call...')
 lblClock.place(x=300, y=260, height=20, width=791)
 
+lblLogo = tk.Label(root)
+lblLogo.place(x=20, y=485, height=238, width=226)
+lblLogo.configure(background="#ffffff")
+root._img1 = tk.PhotoImage(file="./socomec_logo-ba-service_160x145.png")
+lblLogo.configure(image=root._img1)
+lblLogo.configure(text="")
+lblLogo.bind("<Button-1>",click_lblLogo)
+
 #btnEmergency = tk.Button(root, text='EMERGENCY', width=25, command=root.destroy)
 #btnEmergency.place(x = 10, y = 10 , width=100, height=55)
 
 setup_GPIO()
+event_logger("System","Boot")
 timer_fast()
 timer_slow()
 
