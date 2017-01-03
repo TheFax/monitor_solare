@@ -17,120 +17,256 @@ python setup.py install
 sudo python setup.py install
 '''
 
-#import RPi.GPIO as GPIO   #https://github.com/LeMaker/RPi.GPIO_BP
+#Librerie da importare
 import Tkinter as tk   #tkinter -> python 3 ; Tkinter -> python 2.7
 import time
+#import RPi.GPIO as GPIO   #https://github.com/LeMaker/RPi.GPIO_BP
 
-#PIN_NUM = 7
-counter = 0 
+#Fonts
+fontButton = "-family {Cantarell} -size 24 -weight bold -slant roman -underline 0 -overstrike 0"
+fontDescrLabel  = "-family {Nimbus Sans L} -size 34 -slant roman -underline 0 -overstrike 0"
+fontLabel  = "-family {Nimbus Sans L} -size 34 -weight bold -slant roman -underline 0 -overstrike 0"
+fontBottomLabel  = "-family {Nimbus Sans L} -size 74 -weight bold -slant roman -underline 0 -overstrike 0"
+
+GPIO_CICALINA = 1
+GPIO_SIM_1_STATUS = 2
+GPIO_SIM_2_STATUS = 3
+GPIO_TA_1 = 4
+GPIO_TA_2 = 5
+
+fast_counter = 0 
 
 RED =   "#ff0000"
 GREEN = "#00ff00"
 BLUE =  "#0000ff"
 WHITE = "#ffffff"
 BLACK = "#000000"
+ORANGE= "#ff8000"
+YELLOW= "#ffff00"
 
-STANDBY_INIT = "Standby..."
-STANDBY = "Standby"
-ARMED_INIT = "Armed..."
-ARMED = "Armed"
-ARMING_INIT = "Arming..."
-ARMING = "Arming"
-HOLE_INIT = "Hole..."
-HOLE = "Hole!"
+LOOP_STANDBY_INIT = "Standby..."
+LOOP_STANDBY = "Standby"
+LOOP_ARMING_INIT = "Arming..."
+LOOP_ARMING = "Arming"
+LOOP_ARMED_INIT = "Armed..."
+LOOP_ARMED = "Armed"
+LOOP_HOLE_INIT = "Hole..."
+LOOP_HOLE = "Hole!"
+LOOP_END_RUN_IN_INIT = "Run-in: ENDING"
+LOOP_END_RUN_IN = "Run-in: END"
 
-status_simulator_1 = STANDBY_INIT
-status_simulator_2 = STANDBY_INIT
+LOOP_1_status = LOOP_STANDBY_INIT
+LOOP_2_status = LOOP_STANDBY_INIT
+
+SIMULATOR_ON = "ON"
+SIMULATOR_OFF = "OFF"
+
+SIMULATOR_1_status = SIMULATOR_OFF
+SIMULATOR_2_status = SIMULATOR_OFF
+
+CURRENT_PRESENT = "Flowing"
+CURRENT_ABSENT = "Not flowing"
+
+TA_1_status = CURRENT_ABSENT
+TA_2_status = CURRENT_ABSENT
+
+countdown = [ 0 , 0 , 0]
+
+second_edge_finder = 0
 
 def timer_fast():
-    #global root
-    global counter
-    counter += 1
-    root.after(50,timer_fast)
+    global fast_counter
+    global SIMULATOR_1_status
+    global SIMULATOR_2_status
+    global TA_1_status
+    global TA_2_status
+    global LOOP_1_status
+    global LOOP_2_status
+    fast_counter += 1
+    SIMULATOR_1_status = test_simulator (GPIO_SIM_1_STATUS)
+    SIMULATOR_2_status = test_simulator (GPIO_SIM_2_STATUS)
+    TA_1_status = test_ta (GPIO_TA_1)
+    TA_2_status = test_ta (GPIO_TA_2)
+    LOOP_1_status = main_logic(1, LOOP_1_status, TA_1_status, SIMULATOR_1_status)
+    LOOP_2_status = main_logic(2, LOOP_2_status, TA_2_status, SIMULATOR_2_status)
+    root.after(100,timer_fast)
 
 def timer_slow():
-    main_logic()
+    global countdown
+    global second_edge_finder
     update_debug_labels()
     update_labels()
-    root.after(700,timer_slow)
+    time_time=time.time()
+    if second_edge_finder != int(time_time):
+        second_edge_finder = int(time_time)
+        if countdown[1] != 0 : countdown[1] -= 1
+        if countdown[2] != 0 : countdown[2] -= 1
+    root.after(500,timer_slow)
 
-def click_lblSim1(event=None):
-    global counter
-    counter = 0
-    lblBottom.configure(text=event)
-    global status_simulator_1
-    status_simulator_1=ARMED_INIT
-    
-def click_btnDisarm():
-    global status_simulator_1
-    status_simulator_1=STANDBY_INIT
+def test_simulator(the_gpio):
+    #if (GPIO.input(the_gpio) == False) :
+    if 1==1 :
+        return SIMULATOR_ON
+    else:
+        return SIMULATOR_OFF
 
-def main_logic():
-    global status_simulator_1
-    global status_simulator_2
-    status_simulator_1 = update_logic(status_simulator_1,1)
-    status_simulator_2 = update_logic(status_simulator_2,1)
+def test_ta(the_gpio):
+    for x in range(0,20):
+        #if (GPIO.input(the_gpio) == False) :
+        if 1==1 :
+            #Arrivo qui se trovo corrente passante per il TA
+            return CURRENT_PRESENT
+        #Attendo 1 ms
+        time.sleep(0.001)
+    #Arrivo qui se non ho trovato corrente per 20ms consecutivi
+    return CURRENT_ABSENT
 
-
-def update_logic(status, data):
-    if status == STANDBY_INIT:
-        status = STANDBY
-    elif status == STANDBY:
-        pass
-    elif status == ARMED_INIT:
-        status = ARMED
-    elif status == ARMED:
-        pass
-    elif status == ARMING_INIT:
-        status = ARMING
-    elif status == ARMING:
+def main_logic(loop,actual_status,ta,simulator):
+##    LOOP_STANDBY_INIT = "Standby..."
+##    LOOP_STANDBY = "Standby"
+##    LOOP_ARMING_INIT = "Arming..."
+##    LOOP_ARMING = "Arming"
+##    LOOP_ARMED_INIT = "Armed..."
+##    LOOP_ARMED = "Armed"
+##    LOOP_HOLE_INIT = "Hole..."
+##    LOOP_HOLE = "Hole!"
+##    LOOP_END_RUN_IN_INIT = "Run-in: ENDING"
+##    LOOP_END_RUN_IN = "Run-in: END"
+    if actual_status == LOOP_STANDBY_INIT:
+        countdown[loop] = 0
+        actual_status = LOOP_STANDBY
+    elif actual_status == LOOP_STANDBY:
+        if ta == CURRENT_PRESENT:
+            actual_status = LOOP_ARMING_INIT
+        if simulator == SIMULATOR_ON:
+            actual_status = LOOP_ARMING_INIT
+    elif actual_status == LOOP_ARMING_INIT:
+        countdown[loop] = 10    #Tempo autoarm
+        actual_status = LOOP_ARMING
+    elif actual_status == LOOP_ARMING:
+        if countdown[loop] == 0:
+            actual_status = LOOP_ARMED_INIT
+        if simulator == SIMULATOR_OFF or ta == CURRENT_ABSENT:
+            actual_status = LOOP_STANDBY_INIT
+    elif actual_status == LOOP_ARMED_INIT:
+        countdown[loop] = 10    #Tempo run-in
+        actual_status = LOOP_ARMED
+    elif actual_status == LOOP_ARMED:
+        if simulator == SIMULATOR_OFF:
+            actual_status = LOOP_STANDBY_INIT
+        if ta == CURRENT_ABSENT:
+            actual_status = LOOP_HOLE_INIT
+        if countdown[loop] == 0:
+            actual_status = LOOP_END_RUN_IN_INIT
+    elif actual_status == LOOP_HOLE_INIT:
+        countdown[loop] = 0
+        actual_status = LOOP_HOLE
+    elif actual_status == LOOP_HOLE:
+        if simulator == SIMULATOR_OFF:
+            actual_status = LOOP_STANDBY_INIT
+    elif actual_status == LOOP_END_RUN_IN_INIT:
+        countdown[loop] = -1
+        actual_status = LOOP_END_RUN_IN
+    elif actual_status == LOOP_END_RUN_IN:
         pass
     else:
         pass
-    return status
+    return actual_status
+
+def click_lblSim1(event=None):
+    pass
+    
+def click_btnDisarm1():
+    global LOOP_1_status
+    LOOP_1_status = LOOP_STANDBY_INIT
+
+def click_btnDisarm2():
+    global LOOP_2_status
+    LOOP_2_status = LOOP_STANDBY_INIT
+
 
 def update_debug_labels():
-    global counter
-    time_now = time.strftime('%H:%M:%S')
-    time_time = time.time()
-    time.sleep(0.002)
+    global fast_counter
+    time_now = time.strftime('%H:%M:%S')  #20:33:59
+    time_time = time.time()               #1483472098.44
+    time.sleep(0.002)                     #delay 2ms
     time_time2 = time.time()
-    time_clock = time.clock() * 1000
+    time_clock = time.clock() * 1000      #per quanti millisecondi ho occupato il uP?
     delta = time_time2 - time_time
-    stringone = "Now:" + str(time_now) + " | Time:" + str(time_time) + "s | Processor: " + str(time_clock) + "ms | Counter: " + str(counter) + " ticks | Delta: " + str(delta*1000) + " ms"
+    stringone = "Now:" + str(time_now) + " | Time:" + str(time_time) + "s | Processor: " + str(time_clock) + "ms | Counter: " + str(fast_counter) + " ticks | Delta: " + str(delta*1000) + " ms"
     lblClock.config(text=stringone)
     
 def update_labels():
-    lblSim1.config(text=status_simulator_1)
-    #lblSim1.configure(background=WHITE)
-    lblSim2.config(text=status_simulator_2)
-    #lblSim2.configure(background=WHITE)
+    mytext=text_composer(LOOP_1_status,countdown[1])
+    lblSim1.config(text=mytext)
+    mycolor=color_composer(LOOP_1_status)
+    lblSim1.configure(background=mycolor)
 
-#GPIO.setmode(GPIO.BCM)
-#GPIO.setmode(GPIO.BOARD)
-#GPIO.setup(PIN_NUM,GPIO.IN)
+    mytext=text_composer(LOOP_2_status,countdown[2])
+    lblSim2.config(text=mytext)
+    mycolor=color_composer(LOOP_2_status)
+    lblSim2.configure(background=mycolor)
 
-fontButton = "-family {Cantarell} -size 24 -weight bold -slant roman -underline 0 -overstrike 0"
-fontDescrLabel  = "-family {Nimbus Sans L} -size 34 -slant roman -underline 0 -overstrike 0"
-fontLabel  = "-family {Nimbus Sans L} -size 94 -weight bold -slant roman -underline 0 -overstrike 0"
-fontBottomLabel  = "-family {Nimbus Sans L} -size 74 -weight bold -slant roman -underline 0 -overstrike 0"
+def text_composer(status,countdown):
+    mytext=status
+    if countdown < 0:
+        mytext += ": "
+        mytext += time.strftime("%H:%M:%S", time.gmtime(abs(countdown)))        
+    elif countdown > 3600:
+        mytext += ": "
+        mytext += time.strftime("%H:%M", time.gmtime(countdown))
+    else:
+        mytext += ": "
+        mytext += time.strftime('%M:%S"', time.gmtime(countdown))
+    return mytext
+
+def color_composer(status):
+    if status==LOOP_ARMING:
+        return YELLOW
+    if status==LOOP_STANDBY:
+        return WHITE
+    if status==LOOP_ARMED:
+        return GREEN
+    if status==LOOP_HOLE:
+        return ORANGE
+    if status==LOOP_END_RUN_IN:
+        return GREEN
+    
+def setup_GPIO():
+##GPIO_CICALINA = 1
+##GPIO_SIM_1_STATUS = 2
+##GPIO_SIM_2_STATUS = 3
+##GPIO_TA_1 = 4
+##GPIO_TA_2 = 5
+    #GPIO.setmode(GPIO.BCM)
+    #GPIO.setmode(GPIO.BOARD)
+    #GPIO.setup(PIN_NUM,GPIO.IN)
+    #GPIO.setup(PIN_NUM,GPIO.IN)
+    #GPIO.setup(PIN_NUM,GPIO.IN)
+    #GPIO.setup(PIN_NUM,GPIO.IN)
+    #GPIO.setup(PIN_NUM,GPIO.OUT)
+    pass
 
 root = tk.Tk()
 root.title("Solar Monitor")
 root.minsize(300,300)
 root.geometry("1280x768")
 root.configure(background='#ffffff')
+
+#A pieno schermo?
 #root.attributes("-fullscreen", True)   #http://effbot.org/tkinterbook/wm.htm
 
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
-#print "Screen width = ", str(screen_width)
-#print "Screen height = ", str(screen_height)
+print "Screen width = ", str(screen_width)
+print "Screen height = ", str(screen_height)
 
 canvas = tk.Canvas(root)
 canvas.config(background=WHITE)
 canvas.place(x=0, y=0, height=screen_height, width=screen_width)
-canvas.create_line(0,0,screen_width,screen_height) 
+
+#La seguente riga di codice traccia una diagonale sullo schermo. Utile per vedere l'overscan.
+#canvas.create_line(0,0,screen_width,screen_height) 
 
 lblLogo = tk.Label(root)
 lblLogo.place(x=20, y=20, height=238, width=226)
@@ -164,7 +300,7 @@ btnDisarm1 = tk.Button(root)
 btnDisarm1.place(x=800, y=40, height=60, width=291)
 btnDisarm1.configure(activebackground="#d9d9d9")
 btnDisarm1.configure(takefocus="0")
-btnDisarm1.configure(command=click_btnDisarm)
+btnDisarm1.configure(command=click_btnDisarm1)
 btnDisarm1.configure(font=fontButton)
 btnDisarm1.configure(text='''Disarm''')
 
@@ -185,12 +321,13 @@ btnDisarm2 = tk.Button(root)
 btnDisarm2.place(x=800, y=300, height=60, width=291)
 btnDisarm2.configure(activebackground="#d9d9d9")
 btnDisarm2.configure(font=fontButton)
+btnDisarm2.configure(command=click_btnDisarm2)
 btnDisarm2.configure(takefocus="0")
 btnDisarm2.configure(text='''Disarm''')
 
 lblBottom = tk.Label(root)
 lblBottom.place(x=30, y=560, height=90, width=screen_width-30-30)
-lblBottom.configure(background=GREEN)
+lblBottom.configure(background="#808080")
 lblBottom.configure(font=fontBottomLabel)
 lblBottom.configure(text='''Solar Monitor''')
  
@@ -209,6 +346,7 @@ lblClock.place(x=300, y=260, height=20, width=791)
 #btnEmergency = tk.Button(root, text='EMERGENCY', width=25, command=root.destroy)
 #btnEmergency.place(x = 10, y = 10 , width=100, height=55)
 
+setup_GPIO()
 timer_fast()
 timer_slow()
 
