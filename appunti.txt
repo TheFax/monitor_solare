@@ -1,0 +1,10 @@
+sudo dnf install git-all
+git init
+git add *
+git status
+git commit -am "Full logic, in demo mode"
+git remote add origin https://github.com/User/project.git
+git push -u origin master
+git commit -am "Modify"
+git push -u origin master
+
