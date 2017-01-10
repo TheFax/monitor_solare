@@ -9,17 +9,33 @@ Installing GPIO library on Banana Pi:
 
 LINK: http://wiki.lemaker.org/BananaPro/Pi:GPIO_library
 
-git clone https://github.com/LeMaker/RPi.GPIO_BP -b bananapi
-sudo apt-get update
-sudo apt-get install python-dev
-cd RPi.GPIO_BP
-python setup.py install                 
-sudo python setup.py install
+step 1: git clone https://github.com/LeMaker/RPi.GPIO_BP -b bananapi
+step 2: sudo apt-get update
+step 3: sudo apt-get install python-dev
+step 4: cd RPi.GPIO_BP
+step 5: python setup.py install                 
+step 6; sudo python setup.py install
+'''
+
+'''
+Installing PIL
+step 1: sudo apt-get install python-pip
+step 2: sudo pip install Pillow
 '''
 
 #Librerie da importare
-import Tkinter as tk   #tkinter -> python 3 ; Tkinter -> python 2.7
+try:
+    #Python 2
+    import Tkinter as tk
+except ImportError:
+    #python 3
+    import tkinter as tk
+    print ("Loaded library tkinter (running on Python 3.x)")
+else:
+    print ("Loaded library Tkinter (running on Python 2.x)")
+
 import time
+
 #import RPi.GPIO as GPIO   #https://github.com/LeMaker/RPi.GPIO_BP
 
 #Fonts
@@ -53,7 +69,7 @@ LOOP_ARMED = "Armed"
 LOOP_HOLE_INIT = "Hole..."
 LOOP_HOLE = "Hole!"
 LOOP_END_RUN_IN_INIT = "Run-in ENDING"
-LOOP_END_RUN_IN = "Run-in END"
+LOOP_END_RUN_IN = "Run-in PASS"
 
 LOOP_1_status = LOOP_STANDBY_INIT
 LOOP_2_status = LOOP_STANDBY_INIT
@@ -345,7 +361,7 @@ lblClock.place(x=300, y=260, height=20, width=791)
 
 lblLogo = tk.Label(root)
 lblLogo.place(x=20, y=485, height=238, width=226)
-lblLogo.configure(background="#ffffff")
+#lblLogo.configure(background="#ffffff")
 root._img1 = tk.PhotoImage(file="./socomec_logo-ba-service_160x145.png")
 lblLogo.configure(image=root._img1)
 lblLogo.configure(text="")
