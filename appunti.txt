@@ -8,3 +8,5 @@ git push -u origin master
 git commit -am "Modify"
 git push -u origin master
 
+
+git clone https://github.com/TheFax/monitor_solare

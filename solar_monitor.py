@@ -13,6 +13,7 @@
 ######################################################################################################
 ######################################################################################################
 
+#tkinter per la parte grafica
 try:
     #Python 2
     import Tkinter as tk
@@ -23,8 +24,13 @@ except ImportError:
 else:
     print ("Loaded library Tkinter (probably running on Python 2.x)")
 
+#time è usata per alcune funzioni legate al rilevamento del tempo e per creare ritardi
 import time
 
+#sys e os sono usate per determinare la directory corrente
+import sys, os
+
+#GPIO serve appunto per i GPIO
 #import RPi.GPIO as GPIO
 
 ######################################################################################################
@@ -321,6 +327,11 @@ def setup_GPIO():
 ######################################################################################################
 ######################################################################################################
 
+print 'Command line, with arguments: ', sys.argv[0]
+pathname = os.path.dirname(sys.argv[0])
+fullpath = os.path.abspath(pathname) 
+print 'Full path: ', fullpath 
+
 #Creazione finestra principale Tkinter
 root = tk.Tk()
 root.title("Solar Monitor")             #titolo
@@ -353,8 +364,9 @@ canvas.create_line(300,103,1091,103)
 
 #Wallpaper di tutta la finestra
 lblWallpaper = tk.Label(root)
-lblWallpaper.place(x=0, y=0, height=screen_height, width=screen_width)
-root._img1 = tk.PhotoImage(file="./monitor_solare_wallpaper3.png")
+#lblWallpaper.place(x=0, y=0, height=screen_height, width=screen_width)
+lblWallpaper.place(x=0, y=0)
+root._img1 = tk.PhotoImage(file=fullpath+"/monitor_solare_wallpaper3.png")
 lblWallpaper.configure(image=root._img1)
 lblWallpaper.configure(text="")
 lblWallpaper.bind("<Button-1>",click_lblWallpaper)
