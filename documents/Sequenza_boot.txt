@@ -1,0 +1,11 @@
+Questo file è ben nidificato: attenzione a non spostare!
+
+Parte il Rasp
+  Parte l'interfaccia grafica
+     Viene avviato autostart_monitor_solare.sh
+         Avvia update_from_usb.sh
+             Cerca magic folder nella chiavetta
+             Se c'è 'backup_monitor_solare' allora copia da RASP a chiavetta
+             Se c'è 'update_monitor_solare' allora copia da chiavetta a RASP
+                Rende eseguibile il file python
+         Avvia file python

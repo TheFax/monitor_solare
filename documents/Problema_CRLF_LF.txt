@@ -1,0 +1,10 @@
+Per il corretto funzionamento di tutto il sistema, è necessario usare solo LF
+a fine riga. Ricordarsi di impostare ATOM (in basso a destra) con la modalità LF.
+
+In caso ci siano file sbagliati, è possibile cambiare il CRLF in LF con il
+seguente comando:
+
+sed -e "s/\^M//" autostart_monitor_solare.sh > autostart_monitor_solare.sh 
+
+(to get ^M type CTRL+V followed by CTRL+M)
+

@@ -1,0 +1,26 @@
+Configurazione personalizzata della scheda ADC per funzionamento con Raspberry + LED
+
+
+Stringa originale:
+TON00010A00,OUTNSTO04,OR2F29A58,OUTSTKO05,OR2S15A31,TON01010STK,OUTSTKO07,OR2F29A58,OUTSTKO06,NOTI00,TON02001STK,OUTSTKF29,TON03010I01,OUTSTKF25,OR2F25F24,OUTSTKA39,TON04010I02,OUTSTKF23,OR3F23F22F21,OUTSTKA40,
+
+
+Stringa per Raspy (attenzione alla virgola finale!):
+NOTI00,TON02001STK,OUTSTKF29,TOFF00010A00,OUTNSTO04,OUTS01O05,OUTS01O07,
+
+
+Per il funzionamento Raspy bisogna impostare DIP1=OFF e DIP2=ON
+
+Stringa splittata per comprensibilità:
+NOTI00,TON02001STK,OUTSTKF29,     --> Mando in EPO la macchina se l'ingresso IN1 (nominato I00) è trippato per più di 1 secondo
+TOFF00010A00,OUTNSTO04,           --> Eccito la bobina del relè C1 se NON ci sono allarmi (assenza A00) per
+                                      almeno 10 secondi (quindi logica negata).
+OUTS01O05,                        --> Eccito la bobina del relè C2 se sto erogando (stato 01 presente)
+OUTS01O07,                        --> Eccito la bobina del relè C3 se sto erogando (stato 01 presente)
+
+
+
+O04 = Contatti C1
+O05 = Contatti C2
+O06 = Contatti C4 Attenzione swap!
+O07 = Contatti C3 Attenzione swap!

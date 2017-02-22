@@ -1,0 +1,17 @@
+Installing GPIO library on Banana Pi:
+LINK: http://wiki.lemaker.org/BananaPro/Pi:GPIO_library
+step 1: git clone https://github.com/LeMaker/RPi.GPIO_BP -b bananapi
+step 2: sudo apt-get update
+step 3: sudo apt-get install python-dev
+step 4: cd RPi.GPIO_BP
+step 5: python setup.py install                 
+step 6; sudo python setup.py install
+
+
+
+
+
+Installing PIL
+step 1: sudo apt-get install python-pip
+step 2: sudo pip install Pillow
+

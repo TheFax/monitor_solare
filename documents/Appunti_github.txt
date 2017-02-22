@@ -1,0 +1,32 @@
+sudo dnf install git-all
+
+[inizializzazione]
+git init
+git add *
+git commit -am "Full logic, in demo mode"
+
+[aggiungo repository remoto]
+git remote add origin https://github.com/User/project.git
+
+[carico su remoto]
+git push -u origin master
+
+...faccio delle modifiche ai sorgenti...
+
+[aggiorno locale -> remoto]
+git add *
+git commit -am "Modify"
+git push -u origin master
+
+[scarico ultima versione da remoto]
+git pull origin master
+
+git status
+
+
+[iniziare una nuova directory, prendendo il repository di GitHub]
+git init
+git remote add origin https://github.com/TheFax/monitor_solare
+git pull origin master
+
+

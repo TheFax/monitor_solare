@@ -1,0 +1,9 @@
+Aggiornamento automatico.
+
+Se viene trovata la cartella "/update_monitor_solare" all'interno di una chiavetta USB, saranno COPIATI tutti i file in essa
+contenuti nella cartella del software Python del Raspberry.
+
+Se viene trovata una cartella "/backup_monitor_solare" all'interno di una chiavetta USB, innanzitutto verrà svuotata
+con un 'rm -Rf', ed in seguito ci saranno copiati dentro tutti i file contenuti nella cartella "Socomec" del Raspberry.
+
+Questo funziona anche se le cartelle sono nidificate, quindi fare attenzione!!!
