@@ -78,10 +78,13 @@ LOOP_ARMING_INIT = "Arming..."
 LOOP_ARMING = "Arming"
 LOOP_ARMED_INIT = "Armed..."
 LOOP_ARMED = "Armed"
-LOOP_HOLE_INIT = "Hole..."
-LOOP_HOLE = "Hole!"
+LOOP_HOLE_INIT = "Fail..."
+LOOP_HOLE = "Fail!"
 LOOP_END_RUN_IN_INIT = "Run-in ENDING"
 LOOP_END_RUN_IN = "Run-in PASS"
+LOOP_CURRENT_NOT_FLOWING_INIT = "Current not flowing..."
+LOOP_CURRENT_NOT_FLOWING = "Current not flowing"
+
 
 #SIMULATOR state constants
 SIMULATOR_ON = "ON"
@@ -271,46 +274,60 @@ def main_logic(loop,actual_status,ta,simulator):
     -Lo stato precedente del loop
     -Lo stato del passaggio di corrente
     -Lo stato di erogazione del simulatore'''
-    if actual_status == LOOP_STANDBY_INIT:
+    if   (actual_status == LOOP_STANDBY_INIT) :
         countdown[loop] = 0
         actual_status = LOOP_STANDBY
-    elif actual_status == LOOP_STANDBY:
+    elif (actual_status == LOOP_STANDBY) :
         #if ta == CURRENT_PRESENT:
         #    actual_status = LOOP_ARMING_INIT
         if simulator == SIMULATOR_ON:
             actual_status = LOOP_ARMING_INIT
-    elif actual_status == LOOP_ARMING_INIT:
+    elif (actual_status == LOOP_ARMING_INIT) :
         countdown[loop] = 300    #Tempo autoarm / Carico il contatore
         actual_status = LOOP_ARMING
-    elif actual_status == LOOP_ARMING:
+    elif (actual_status == LOOP_ARMING) :
         if countdown[loop] == 0:
-            actual_status = LOOP_ARMED_INIT
+            if ta == CURRENT_ABSENT :
+                actual_status = LOOP_CURRENT_NOT_FLOWING_INIT
+            else          
+                actual_status = LOOP_ARMED_INIT
         if simulator == SIMULATOR_OFF:
             actual_status = LOOP_STANDBY_INIT
-    elif actual_status == LOOP_ARMED_INIT:
+    elif (actual_status == LOOP_ARMED_INIT) :
         countdown[loop] = 5460    #Tempo run-in
         melodia_autoarm()
         actual_status = LOOP_ARMED
-    elif actual_status == LOOP_ARMED:
+    elif (actual_status == LOOP_ARMED) :
         if countdown[loop] == 0:
             actual_status = LOOP_END_RUN_IN_INIT
-    elif actual_status == LOOP_HOLE_INIT:
-        countdown[loop] = 0
-        event_logger("Logic","Hole in loop " + str(loop))
-        actual_status = LOOP_HOLE
-    elif actual_status == LOOP_HOLE:
-        melodia_hole()
-        if simulator == SIMULATOR_OFF:
-            actual_status = LOOP_STANDBY_INIT
-    elif actual_status == LOOP_END_RUN_IN_INIT:
-        countdown[loop] = -1
-        melodia_finerunin()
-        actual_status = LOOP_END_RUN_IN
-    elif actual_status == LOOP_END_RUN_IN:
         if simulator == SIMULATOR_OFF:
             actual_status = LOOP_STANDBY_INIT
         if ta == CURRENT_ABSENT:
             actual_status = LOOP_HOLE_INIT
+    elif (actual_status == LOOP_HOLE_INIT) :
+        countdown[loop] = 0
+        event_logger("Logic","Hole in loop " + str(loop))
+        actual_status = LOOP_HOLE
+    elif (actual_status == LOOP_HOLE) :
+        melodia_hole()
+        if simulator == SIMULATOR_OFF:
+            actual_status = LOOP_STANDBY_INIT
+    elif (actual_status == LOOP_END_RUN_IN_INIT) :
+        countdown[loop] = -1
+        melodia_finerunin()
+        actual_status = LOOP_END_RUN_IN
+    elif (actual_status == LOOP_END_RUN_IN) :
+        if simulator == SIMULATOR_OFF:
+            actual_status = LOOP_STANDBY_INIT
+        if ta == CURRENT_ABSENT:
+            actual_status = LOOP_HOLE_INIT
+    elif (actual_status == LOOP_CURRENT_NOT_FLOWING_INIT) :
+        event_logger("Logic","Current non flowing in loop " + str(loop))
+        actual_status =  LOOP_CURRENT_NOT_FLOWING
+    elif (actual_status == LOOP_CURRENT_NOT_FLOWING) :
+        melodia_hole()
+        if simulator == SIMULATOR_OFF:
+            actual_status = LOOP_STANDBY_INIT
     else:
         pass
     return actual_status
