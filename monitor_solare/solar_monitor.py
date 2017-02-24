@@ -61,6 +61,13 @@ fullscren_mode = "true"
 ######################################################################################################
 ######################################################################################################
 
+VERSION = "4.5"
+
+#Tempi
+AUTOARM_TIME = 400  #secondi
+RUNIN_TIME = 5460 #secondi
+AUTOARM_AFTER_NOT_FLOWING = 60 #secondi
+
 #Color constants
 RED =   "#ff0000"
 GREEN = "#00ff00"
@@ -257,8 +264,8 @@ def test_simulator(the_gpio):
 
 def test_ta(the_gpio):
     '''Questa funzione ricerca il passaggio di corrente sul TA collegato al pin passato come
-    argomento, per massimo 20 ms'''
-    for x in range(0,20):
+    argomento, per massimo 40 ms'''
+    for x in range(0,40):
         if (GPIO.input(the_gpio) == True) :
         #if (1==1) :   #Usato in modalità demo
             #Arrivo qui se trovo corrente passante per il TA
@@ -283,18 +290,18 @@ def main_logic(loop,actual_status,ta,simulator):
         if simulator == SIMULATOR_ON:
             actual_status = LOOP_ARMING_INIT
     elif (actual_status == LOOP_ARMING_INIT) :
-        countdown[loop] = 300    #Tempo autoarm / Carico il contatore
+        countdown[loop] = AUTOARM_TIME    #Tempo autoarm / Carico il contatore
         actual_status = LOOP_ARMING
     elif (actual_status == LOOP_ARMING) :
         if countdown[loop] == 0:
             if ta == CURRENT_ABSENT :
                 actual_status = LOOP_CURRENT_NOT_FLOWING_INIT
-            else          
+            else :
                 actual_status = LOOP_ARMED_INIT
         if simulator == SIMULATOR_OFF:
             actual_status = LOOP_STANDBY_INIT
     elif (actual_status == LOOP_ARMED_INIT) :
-        countdown[loop] = 5460    #Tempo run-in
+        countdown[loop] = RUNIN_TIME    #Tempo run-in
         melodia_autoarm()
         actual_status = LOOP_ARMED
     elif (actual_status == LOOP_ARMED) :
@@ -322,10 +329,13 @@ def main_logic(loop,actual_status,ta,simulator):
         if ta == CURRENT_ABSENT:
             actual_status = LOOP_HOLE_INIT
     elif (actual_status == LOOP_CURRENT_NOT_FLOWING_INIT) :
-        event_logger("Logic","Current non flowing in loop " + str(loop))
+        event_logger("Logic","Current not flowing in loop " + str(loop))
         actual_status =  LOOP_CURRENT_NOT_FLOWING
     elif (actual_status == LOOP_CURRENT_NOT_FLOWING) :
         melodia_hole()
+        if ta == CURRENT_PRESENT :
+            countdown[loop] = AUTOARM_AFTER_NOT_FLOWING    #Tempo autoarm / Carico il contatore
+            actual_status = LOOP_ARMING
         if simulator == SIMULATOR_OFF:
             actual_status = LOOP_STANDBY_INIT
     else:
@@ -555,7 +565,7 @@ lblDebug.place(x=300, y=260, height=20, width=791)
 setup_GPIO()
 
 #Prima riga di LOG
-event_logger("System","Boot")
+event_logger("System","Boot. Software v " + VERSION)
 
 #Avvio i due timer
 timer_fast()
