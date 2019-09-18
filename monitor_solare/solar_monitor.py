@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Monitor solare versione 2
+# Monitor solare
 # FXO 12/12/2016 ... Dicembre 2016 / Gennaio 2017
 
 # Questo software è progettato per funzionare su Banana PI oppure su Raspberry PI
@@ -47,9 +47,9 @@ fontBottomLabel  = "-family {Nimbus Sans L} -size 28              -slant roman -
 
 #GPIO configuration
 GPIO_CICALINA = 25
-GPIO_CURRENT_1 = 21
+GPIO_CURRENT_1 = 21     #Sensori di corrente 1 e 2
 GPIO_CURRENT_2 = 20
-GPIO_SIM_1_STATUS = 26
+GPIO_SIM_1_STATUS = 26  #Stato dei simulatori 1 e 2 
 GPIO_SIM_2_STATUS = 16
 
 #Fullscreen? true or false
@@ -61,12 +61,15 @@ fullscren_mode = "true"
 ######################################################################################################
 ######################################################################################################
 
-VERSION = "4.5"
+#Versione software: ricordarsi di aggiornarla
+VERSION = "4.9"
 
 #Tempi
 AUTOARM_TIME = 400  #secondi
-RUNIN_TIME = 5460 #secondi
+RUNIN_TIME =  5460 #secondi
 AUTOARM_AFTER_NOT_FLOWING = 60 #secondi
+SHUTDOWN_TIME = "17:05"
+SHUTDOWN_PROCEDURE = "sudo shutdown -t 0"
 
 #Color constants
 RED =   "#ff0000"
@@ -77,20 +80,25 @@ BLACK = "#000000"
 GRAY =  "#8D8D8D"
 ORANGE= "#ff8000"
 YELLOW= "#ffff00"
+CIAN =  "#25D0FF"
 
 #LOOP state constants
-LOOP_STANDBY_INIT = "Standby..."
-LOOP_STANDBY = "Standby"
-LOOP_ARMING_INIT = "Arming..."
-LOOP_ARMING = "Arming"
-LOOP_ARMED_INIT = "Armed..."
-LOOP_ARMED = "Armed"
-LOOP_HOLE_INIT = "Fail..."
-LOOP_HOLE = "Fail!"
-LOOP_END_RUN_IN_INIT = "Run-in ENDING"
-LOOP_END_RUN_IN = "Run-in PASS"
+LOOP_STANDBY_INIT =             "Standby..."
+LOOP_STANDBY =                  "Standby"
+LOOP_ARMING_INIT =              "Arming..."
+LOOP_ARMING =                   "Arming"
+LOOP_ARMED_INIT =               "Armed..."
+LOOP_ARMED =                    "Armed"
+LOOP_HOLE_INIT =                "Fail..."
+LOOP_HOLE =                     "Fail!"
+LOOP_END_RUN_IN_INIT =          "Run-in ENDING"
+LOOP_END_RUN_IN =               "Run-in PASS"
 LOOP_CURRENT_NOT_FLOWING_INIT = "Current not flowing..."
-LOOP_CURRENT_NOT_FLOWING = "Current not flowing"
+LOOP_CURRENT_NOT_FLOWING =      "Current not flowing"
+LOOP_MANUAL_OFF_INIT =          "Manual OFF..."
+LOOP_MANUAL_OFF =               "Manual OFF"
+LOOP_MANUAL_TIMER_INIT =        "Manual Timer..."
+LOOP_MANUAL_TIMER =             "Manual Timer"
 
 
 #SIMULATOR state constants
@@ -140,7 +148,9 @@ seconds_edge_finder = 0
 
 def timer_fast():
     '''Richiamata ogni 100ms, si occupa di verificare lo stato dei simulatori, della corrente
-    passante per i TA e di calcolare lo stato dei Loop per verificare i buchi di erogazione'''
+    passante per i TA e di calcolare lo stato dei Loop per verificare i buchi di erogazione.
+    Lo stato dei simulatori, lo stato dei loop e lo stato di passaggio della corrente vengono 
+    salvati in variabili globali.'''
     global fast_counter
     global SIMULATOR_1_status
     global SIMULATOR_2_status
@@ -156,20 +166,32 @@ def timer_fast():
     LOOP_1_status = main_logic(1, LOOP_1_status, CURRENT_1_status, SIMULATOR_1_status)
     LOOP_2_status = main_logic(2, LOOP_2_status, CURRENT_2_status, SIMULATOR_2_status)
     #global countdown; print countdown, SIMULATOR_1_status, SIMULATOR_2_status, CURRENT_1_status, CURRENT_2_status, GPIO_SIM_1_STATUS, GPIO_CURRENT_1
+    #Ri-armo il timer fast
     root.after(FAST_TIMER_SPEED,timer_fast)
 
 def timer_slow():
     '''Richiamata circa 2 volte al secondo, aggiorna la grafica e rileva il passaggio dei secondi
     per poter eseguire i countdown dovuti'''
-    global countdown
-    global seconds_edge_finder
-    update_debug_labels()
+    global Countdown           #questo in realtà è un array
+    global seconds_edge_finder #ultimo secondo effetivo
+    #Aggiornamento parte grafica
+    update_debug_labels()      
     update_labels()
-    time_time=time.time()
-    if seconds_edge_finder != int(time_time):
+    #Rilevo il passaggio dei secondi
+    time_time=time.time()    #Leggo l'orario attuale   
+    if seconds_edge_finder != int(time_time):   #Confronto l'orario letto con quello memorizzato nella variabile "seconds_edge_finder"
+        #Se l'orario attuale differisce da quello salvato, vuol dire che stiamo analizzando un "nuovo" secondo.
+        #Questo significa che:
+        #passo per questo punto del programma 1 volta al secondo
         seconds_edge_finder = int(time_time)
+        #Decremento i countdown, se è il caso di farlo
         if countdown[1] != 0 : countdown[1] -= 1
         if countdown[2] != 0 : countdown[2] -= 1
+        #Verifico se è ora di spegnere il Raspberry
+        if time.strftime('%H:%M') == SHUTDOWN_TIME :
+            if SIMULATOR_1_status == SIMULATOR_OFF and SIMULATOR_2_status == SIMULATOR_OFF:
+                os.System(SHUTDOWN_PROCEDURE)
+
     root.after(SLOW_TIMER_SPEED,timer_slow)
 
 #cicalacounter=0
@@ -280,11 +302,15 @@ def main_logic(loop,actual_status,ta,simulator):
     -Il numero di loop
     -Lo stato precedente del loop
     -Lo stato del passaggio di corrente
-    -Lo stato di erogazione del simulatore'''
+    -Lo stato di erogazione del simulatore
+    ---
+    Tutto funziona grazie ad una macchina a stati finiti.
+    '''
     if   (actual_status == LOOP_STANDBY_INIT) :
         countdown[loop] = 0
         actual_status = LOOP_STANDBY
     elif (actual_status == LOOP_STANDBY) :
+        #Stato STANDBY. Questo significa simulatore spento.
         #if ta == CURRENT_PRESENT:
         #    actual_status = LOOP_ARMING_INIT
         if simulator == SIMULATOR_ON:
@@ -293,6 +319,7 @@ def main_logic(loop,actual_status,ta,simulator):
         countdown[loop] = AUTOARM_TIME    #Tempo autoarm / Carico il contatore
         actual_status = LOOP_ARMING
     elif (actual_status == LOOP_ARMING) :
+        #Stato ARMING. Questo significa simulatore acceso, ma devo ancora attendere che il solare inizi ad erogare in rete
         if countdown[loop] == 0:
             if ta == CURRENT_ABSENT :
                 actual_status = LOOP_CURRENT_NOT_FLOWING_INIT
@@ -305,6 +332,7 @@ def main_logic(loop,actual_status,ta,simulator):
         melodia_autoarm()
         actual_status = LOOP_ARMED
     elif (actual_status == LOOP_ARMED) :
+        #Stato ARMED: Questo significa simulatore acceso e solare in erogazione. Questo stato perdura per tutto il run-in
         if countdown[loop] == 0:
             actual_status = LOOP_END_RUN_IN_INIT
         if simulator == SIMULATOR_OFF:
@@ -316,6 +344,7 @@ def main_logic(loop,actual_status,ta,simulator):
         event_logger("Logic","Hole in loop " + str(loop))
         actual_status = LOOP_HOLE
     elif (actual_status == LOOP_HOLE) :
+        #Stato HOLE: Questo significa che ho rilevato un "buco" di erogazione e devo segnalarlo tramite beep
         melodia_hole()
         if simulator == SIMULATOR_OFF:
             actual_status = LOOP_STANDBY_INIT
@@ -324,23 +353,45 @@ def main_logic(loop,actual_status,ta,simulator):
         melodia_finerunin()
         actual_status = LOOP_END_RUN_IN
     elif (actual_status == LOOP_END_RUN_IN) :
+        #Stato END_RUN_IN: Questo significa che il tempo di run-in è passato. Continuiamo comunque a ricercare buchi di erogazione
         if simulator == SIMULATOR_OFF:
             actual_status = LOOP_STANDBY_INIT
         if ta == CURRENT_ABSENT:
             actual_status = LOOP_HOLE_INIT
+        if countdown[loop] == -600:
+            melodia_finerunin()  
     elif (actual_status == LOOP_CURRENT_NOT_FLOWING_INIT) :
         event_logger("Logic","Current not flowing in loop " + str(loop))
         actual_status =  LOOP_CURRENT_NOT_FLOWING
     elif (actual_status == LOOP_CURRENT_NOT_FLOWING) :
+        #Stato CURRENT_NOT_FLOWING: Questo significa che il simulatore è acceso da un po' e il solare non ha ancora iniziato l'erogazione. C'è un problema.
         melodia_hole()
         if ta == CURRENT_PRESENT :
             countdown[loop] = AUTOARM_AFTER_NOT_FLOWING    #Tempo autoarm / Carico il contatore
             actual_status = LOOP_ARMING
         if simulator == SIMULATOR_OFF:
             actual_status = LOOP_STANDBY_INIT
+    elif (actual_status == LOOP_MANUAL_OFF_INIT) :
+        #Stato MANUAL_OFF: Tutte le logiche automatiche sono disattivate.
+    	actual_status = LOOP_MANUAL_OFF
+    	countdown[loop] = 0
+    elif (actual_status == LOOP_MANUAL_OFF) :
+    	pass
+    elif (actual_status == LOOP_MANUAL_TIMER_INIT) :
+    	actual_status = LOOP_MANUAL_TIMER
+    	countdown[loop] = RUNIN_TIME    #Tempo run-in
+    elif (actual_status == LOOP_MANUAL_TIMER) :
+        #Stato MANUAL_TIMER: Eseguo solo un conteggio alla rovescia, per cronometrare il tempo di run-in. Le logiche automatiche sono disattivate
+        if countdown[loop] == 0:
+            countdown[loop] = -1
+            melodia_finerunin()
+        if simulator == SIMULATOR_OFF:
+            actual_status = LOOP_STANDBY_INIT
     else:
+        #Per nessuna ragione dovrei passare di qui...
         pass
     return actual_status
+
 
 def click_lblWallpaper(event=None):
     '''Se clicco nello sfondo dell'applicazione, questa si chiude'''
@@ -348,15 +399,36 @@ def click_lblWallpaper(event=None):
     event_logger("Event","exit via click_lblWallpaper")
     root.destroy()
 
+
+def click_btnOff1():
+    event_logger("Event","Manual off loop 1")
+    global LOOP_1_status
+    LOOP_1_status = LOOP_MANUAL_OFF_INIT
+
 def click_btnDisarm1():
     event_logger("Event","Manual disarm loop 1")
     global LOOP_1_status
     LOOP_1_status = LOOP_STANDBY_INIT
 
+def click_btnTimer1():
+    event_logger("Event","Manual timer loop 1")
+    global LOOP_1_status
+    LOOP_1_status = LOOP_MANUAL_TIMER_INIT
+
+def click_btnOff2():
+    event_logger("Event","Manual off loop 2")
+    global LOOP_2_status
+    LOOP_2_status = LOOP_MANUAL_OFF_INIT
+
 def click_btnDisarm2():
     event_logger("Event","Manual disarm loop 2")
     global LOOP_2_status
     LOOP_2_status = LOOP_STANDBY_INIT
+
+def click_btnTimer2():
+    event_logger("Event","Manual timer loop 2")
+    global LOOP_2_status
+    LOOP_2_status = LOOP_MANUAL_TIMER_INIT
 
 def event_logger(group, description):
     '''Tengo traccia degli eventi importanti
@@ -423,6 +495,11 @@ def color_composer(status):
         return ORANGE
     if status==LOOP_END_RUN_IN:
         return GREEN
+    if status==LOOP_MANUAL_OFF:
+    	return CIAN
+    if status==LOOP_MANUAL_TIMER:
+    	return CIAN
+
 
 def setup_GPIO():
     '''Inizializzazione GPIO'''
@@ -501,18 +578,37 @@ lblDescr1.configure(text=''' Simulator 1''')
 canvas.create_line(300,101,1091,101)
 canvas.create_line(300,102,1091,102)
 canvas.create_line(300,103,1091,103)
+
 lblSim1 = tk.Label(root)
 lblSim1.place(x=300, y=105, height=140, width=1011)
 lblSim1.configure(background=GREEN)
 lblSim1.configure(font=fontLabel)
 lblSim1.configure(text='''loading''')
+
+btnOff1 = tk.Button(root)
+btnOff1.place(x=800, y=40, height=60, width=100)
+btnOff1.configure(activebackground="#d9d9d9")
+btnOff1.configure(takefocus="0")
+btnOff1.configure(command=click_btnOff1)
+btnOff1.configure(font=fontButton)
+btnOff1.configure(text='''OFF''')
+
 btnDisarm1 = tk.Button(root)
-btnDisarm1.place(x=800, y=40, height=60, width=291)
+btnDisarm1.place(x=925, y=40, height=60, width=175)
 btnDisarm1.configure(activebackground="#d9d9d9")
 btnDisarm1.configure(takefocus="0")
 btnDisarm1.configure(command=click_btnDisarm1)
 btnDisarm1.configure(font=fontButton)
-btnDisarm1.configure(text='''Disarm''')
+btnDisarm1.configure(text='''Reset''')
+
+btnTimer1 = tk.Button(root)
+btnTimer1.place(x=1125, y=40, height=60, width=175)
+btnTimer1.configure(activebackground="#d9d9d9")
+btnTimer1.configure(takefocus="0")
+btnTimer1.configure(command=click_btnTimer1)
+btnTimer1.configure(font=fontButton)
+btnTimer1.configure(text='''Timer''')
+
 #Predisposizione progressbar
 #TProgressbar1 = tk.Progressbar(root)
 #TProgressbar1.place(relx=0.37, rely=0.26, relwidth=0.62, relheight=0.0, height=19)
@@ -533,13 +629,31 @@ lblSim2.place(x=300, y=365, height=140, width=1011)
 lblSim2.configure(background=GREEN)
 lblSim2.configure(font=fontLabel)
 lblSim2.configure(text='''loading...''')
-btnDisarm2 = tk.Button(root)
-btnDisarm2.place(x=800, y=300, height=60, width=291)
-btnDisarm2.configure(activebackground="#d9d9d9")
-btnDisarm2.configure(font=fontButton)
-btnDisarm2.configure(command=click_btnDisarm2)
-btnDisarm2.configure(takefocus="0")
-btnDisarm2.configure(text='''Disarm''')
+
+btnOff1 = tk.Button(root)
+btnOff1.place(x=800, y=300, height=60, width=100)
+btnOff1.configure(activebackground="#d9d9d9")
+btnOff1.configure(takefocus="0")
+btnOff1.configure(command=click_btnOff2)
+btnOff1.configure(font=fontButton)
+btnOff1.configure(text='''OFF''')
+
+btnDisarm1 = tk.Button(root)
+btnDisarm1.place(x=925, y=300, height=60, width=175)
+btnDisarm1.configure(activebackground="#d9d9d9")
+btnDisarm1.configure(takefocus="0")
+btnDisarm1.configure(command=click_btnDisarm2)
+btnDisarm1.configure(font=fontButton)
+btnDisarm1.configure(text='''Reset''')
+
+btnTimer1 = tk.Button(root)
+btnTimer1.place(x=1125, y=300, height=60, width=175)
+btnTimer1.configure(activebackground="#d9d9d9")
+btnTimer1.configure(takefocus="0")
+btnTimer1.configure(command=click_btnTimer2)
+btnTimer1.configure(font=fontButton)
+btnTimer1.configure(text='''Timer''')
+
 #Predisposizione progressbar
 #TProgressbar2 = tk.Progressbar(root)
 #TProgressbar2.place(relx=0.37, rely=0.70, relwidth=0.62, relheight=0.0, height=19)
@@ -551,6 +665,8 @@ lblBottom.place(x=30, y=560, height=60, width=screen_width-30-30)
 lblBottom.configure(background="#808080")
 lblBottom.configure(font=fontBottomLabel)
 lblBottom.configure(text='''Solar Monitor''')
+
+
 
 #Label centrale per debug
 lblDebug = tk.Label(root, font=("Helvetica", 36))
